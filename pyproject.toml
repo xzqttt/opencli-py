@@ -1,0 +1,15 @@
+[project]
+name = "opencli-py"
+version = "0.1.0"
+description = "Minimal Python browser automation using Chrome Extension"
+requires-python = ">=3.12"
+authors = [
+    { name = "Your Name" }
+]
+dependencies = [
+    "aiohttp>=3.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
