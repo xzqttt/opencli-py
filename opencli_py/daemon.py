@@ -35,7 +35,7 @@ def reset_idle_timer(app: web.Application):
 
 async def shutdown(app: web.Application):
     """Gracefully shutdown the daemon."""
-    global extension_ws, pending_requests
+    global extension_ws, extension_connected, pending_requests
 
     # Reject all pending requests
     for fut in pending_requests.values():
@@ -44,9 +44,13 @@ async def shutdown(app: web.Application):
     pending_requests.clear()
 
     # Close extension WebSocket
-    if extension_ws and not extension_ws.closed:
-        await extension_ws.close()
+    if extension_ws:
+        try:
+            await extension_ws.close()
+        except:
+            pass
         extension_ws = None
+        extension_connected = False
 
     # Stop the server
     runner = app.get("runner")
