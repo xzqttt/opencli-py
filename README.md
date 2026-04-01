@@ -69,7 +69,7 @@ with OpenCLI() as cli:
 ### OpenCLI
 
 ```python
-OpenCLI(host="127.0.0.1", port=19825)
+OpenCLI(host="127.0.0.1", port=19826)
 ```
 
 **Methods:**
