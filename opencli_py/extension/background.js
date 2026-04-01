@@ -22,24 +22,6 @@ const automationSessions = new Map();
 // CDP attached tabs: tabId -> true
 const attached = new Set();
 
-// === Console log forwarding ===
-
-const _origLog = console.log.bind(console);
-const _origWarn = console.warn.bind(console);
-const _origError = console.error.bind(console);
-
-function forwardLog(level, args) {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  try {
-    const msg = args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ');
-    ws.send(JSON.stringify({ type: 'log', level, msg, ts: Date.now() }));
-  } catch {}
-}
-
-console.log = (...args) => { _origLog(...args); forwardLog('info', args); };
-console.warn = (...args) => { _origWarn(...args); forwardLog('warn', args); };
-console.error = (...args) => { _origError(...args); forwardLog('error', args); };
-
 // === WebSocket connection ===
 
 async function connect() {
