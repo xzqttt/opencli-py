@@ -14,6 +14,7 @@ from .protocol import (
 
 # Global state
 extension_ws: Optional[web.WebSocketResponse] = None
+extension_connected = False
 pending_requests: dict[str, asyncio.Future] = {}
 idle_timer: Optional[asyncio.Task] = None
 
@@ -66,7 +67,7 @@ async def handle_status(request: web.Request) -> web.Response:
 
     return web.json_response({
         "ok": True,
-        "extensionConnected": extension_ws is not None and not extension_ws.closed,
+        "extensionConnected": extension_connected,
         "extensionVersion": "0.1.0"
     })
 
@@ -84,7 +85,7 @@ async def handle_command(request: web.Request) -> web.Response:
     if not cmd_id:
         return web.json_response({"ok": False, "error": "Missing command id"}, status=400)
 
-    if not extension_ws or extension_ws.closed:
+    if not extension_connected or not extension_ws:
         return web.json_response({
             "id": cmd_id,
             "ok": False,
@@ -115,7 +116,7 @@ async def handle_command(request: web.Request) -> web.Response:
 
 async def handle_extension_ws(request: web.Request) -> web.WebSocketResponse:
     """Handle WebSocket connection from extension."""
-    global extension_ws
+    global extension_ws, extension_connected
 
     # Origin check
     origin = request.headers.get("Origin")
@@ -127,6 +128,7 @@ async def handle_extension_ws(request: web.Request) -> web.WebSocketResponse:
 
     print("[daemon] Extension connected")
     extension_ws = ws
+    extension_connected = True
     reset_idle_timer(request.app)
 
     try:
@@ -159,6 +161,7 @@ async def handle_extension_ws(request: web.Request) -> web.WebSocketResponse:
         print("[daemon] Extension disconnected")
         if extension_ws == ws:
             extension_ws = None
+            extension_connected = False
             # Reject pending requests
             for msg_id, fut in list(pending_requests.items()):
                 if not fut.done():
