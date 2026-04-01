@@ -157,7 +157,7 @@ async def handle_http_request(reader: asyncio.StreamReader, writer: asyncio.Stre
 
     method, path, version = match.groups()
 
-    # Read headers
+    # Read headers (case-insensitive)
     headers = {}
     while True:
         line = await reader.readline()
@@ -166,13 +166,13 @@ async def handle_http_request(reader: asyncio.StreamReader, writer: asyncio.Stre
         line = line.decode("utf-8").strip()
         if ":" in line:
             key, value = line.split(":", 1)
-            headers[key.strip()] = value.strip()
+            headers[key.strip().lower()] = value.strip()
 
     # Check for WebSocket upgrade
-    upgrade = headers.get("Upgrade", "").lower()
-    connection = headers.get("Connection", "").lower()
+    upgrade = headers.get("upgrade", "").lower()
+    connection = headers.get("connection", "").lower()
     if "upgrade" in connection and "websocket" in upgrade:
-        await handle_websocket_upgrade(reader, writer, headers, headers.get("Sec-WebSocket-Key"))
+        await handle_websocket_upgrade(reader, writer, headers, headers.get("sec-websocket-key"))
         return
 
     # Route HTTP requests
@@ -182,7 +182,7 @@ async def handle_http_request(reader: asyncio.StreamReader, writer: asyncio.Stre
         await handle_status(writer, headers)
     elif method == "POST" and path == "/command":
         # Read body
-        content_length = int(headers.get("Content-Length", 0))
+        content_length = int(headers.get("content-length", 0))
         body = await reader.readexactly(content_length) if content_length > 0 else b""
         await handle_command(writer, headers, body)
     else:
@@ -194,7 +194,7 @@ async def handle_websocket_upgrade(reader: asyncio.StreamReader, writer: asyncio
     global extension_ws
 
     # Origin check
-    origin = headers.get("Origin", "")
+    origin = headers.get("origin", "")
     if origin and not origin.startswith("chrome-extension://"):
         await send_http_response(writer, 403, "Forbidden")
         return
@@ -280,9 +280,18 @@ async def handle_websocket_upgrade(reader: asyncio.StreamReader, writer: asyncio
 
 def json_response(data: Any, status: int = 200) -> bytes:
     """Create JSON HTTP response."""
+    status_messages = {
+        200: "OK",
+        400: "Bad Request",
+        403: "Forbidden",
+        404: "Not Found",
+        408: "Request Timeout",
+        503: "Service Unavailable",
+    }
+    message = status_messages.get(status, "OK")
     body = json.dumps(data).encode("utf-8")
     return (
-        f"HTTP/1.1 {status} OK\r\n"
+        f"HTTP/1.1 {status} {message}\r\n"
         "Content-Type: application/json\r\n"
         f"Content-Length: {len(body)}\r\n"
         "\r\n"
@@ -310,7 +319,7 @@ async def handle_ping(writer: asyncio.StreamWriter):
 async def handle_status(writer: asyncio.StreamWriter, headers: dict):
     """Return daemon status."""
     # Verify X-OpenCLI header
-    if "X-OpenCLI" not in headers:
+    if "x-opencli" not in headers:
         response = json_response({"ok": False, "error": "Forbidden"}, status=403)
         writer.write(response)
         await writer.drain()
@@ -332,7 +341,7 @@ async def handle_command(writer: asyncio.StreamWriter, headers: dict, body: byte
     global extension_ws
 
     # Verify X-OpenCLI header
-    if "X-OpenCLI" not in headers:
+    if "x-opencli" not in headers:
         response = json_response({"ok": False, "error": "Forbidden"}, status=403)
         writer.write(response)
         await writer.drain()
