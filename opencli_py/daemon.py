@@ -42,7 +42,7 @@ async def shutdown(app: web.Application):
     pending_requests.clear()
 
     # Close extension WebSocket
-    if extension_ws:
+    if extension_ws is not None:
         try:
             await extension_ws.close()
         except:
@@ -66,6 +66,8 @@ async def handle_status(request: web.Request) -> web.Response:
     if "X-OpenCLI" not in request.headers:
         return web.json_response({"ok": False, "error": "Forbidden"}, status=403)
 
+    print(f"[daemon] handle_status: extension_ws={extension_ws}, id={id(extension_ws) if extension_ws is not None else 'None'}")
+
     return web.json_response({
         "ok": True,
         "extensionConnected": extension_ws is not None,
@@ -86,7 +88,10 @@ async def handle_command(request: web.Request) -> web.Response:
     if not cmd_id:
         return web.json_response({"ok": False, "error": "Missing command id"}, status=400)
 
-    if not extension_ws:
+    print(f"[daemon] handle_command: extension_ws={extension_ws}, is None={extension_ws is None}")
+
+    if extension_ws is None:
+        print(f"[daemon] handle_command: returning 503!")
         return web.json_response({
             "id": cmd_id,
             "ok": False,
