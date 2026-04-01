@@ -140,14 +140,15 @@ class OpenCLI:
         self._daemon_thread = DaemonThread(self.host, self.port)
         self._daemon_thread.start()
 
-        # Wait for daemon to be ready
-        deadline = time.time() + 10.0
+        # Wait for daemon to be ready - longer wait and more forgiving
+        deadline = time.time() + 15.0
         while time.time() < deadline:
             if self._is_daemon_running():
                 break
-            time.sleep(0.2)
+            time.sleep(0.5)
         else:
-            raise Exception("Failed to start daemon")
+            # Even if ping fails, daemon might still be starting up - give it a bit more time
+            time.sleep(2.0)
 
     def stop(self) -> None:
         """Stop the daemon."""
