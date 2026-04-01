@@ -4,8 +4,8 @@
  * Minimal implementation: navigate, exec, cookies
  */
 
-const DAEMON_WS_URL = 'ws://127.0.0.1:19825/ext';
-const DAEMON_PING_URL = 'http://127.0.0.1:19825/ping';
+const DAEMON_WS_URL = 'ws://127.0.0.1:19826/ext';
+const DAEMON_PING_URL = 'http://127.0.0.1:19826/ping';
 const WS_RECONNECT_BASE_DELAY = 2000;
 const WS_RECONNECT_MAX_DELAY = 60000;
 const WINDOW_IDLE_TIMEOUT = 30000;
