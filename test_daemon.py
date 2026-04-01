@@ -7,8 +7,8 @@ import urllib.request
 def test_ping():
     """Test if daemon responds to ping."""
     try:
-        req = urllib.request.Request("http://127.0.0.1:19826/ping", timeout=2)
-        with urllib.request.urlopen(req) as f:
+        req = urllib.request.Request("http://127.0.0.1:19826/ping")
+        with urllib.request.urlopen(req, timeout=2) as f:
             print(f"Ping response: {f.read().decode('utf-8')}")
             return True
     except Exception as e:

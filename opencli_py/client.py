@@ -166,8 +166,8 @@ class OpenCLI:
     def _is_daemon_running(self) -> bool:
         """Check if daemon is running."""
         try:
-            req = urllib.request.Request(f"{self._base_url}/ping", timeout=2)
-            with urllib.request.urlopen(req):
+            req = urllib.request.Request(f"{self._base_url}/ping")
+            with urllib.request.urlopen(req, timeout=2):
                 return True
         except Exception:
             return False

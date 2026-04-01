@@ -9,8 +9,8 @@ import json
 def check_daemon():
     """Check if daemon is running."""
     try:
-        req = urllib.request.Request("http://127.0.0.1:19826/ping", timeout=2)
-        with urllib.request.urlopen(req) as f:
+        req = urllib.request.Request("http://127.0.0.1:19826/ping")
+        with urllib.request.urlopen(req, timeout=2) as f:
             print("✅ Daemon is running!")
             return True
     except Exception as e:
@@ -23,10 +23,9 @@ def check_extension():
     try:
         req = urllib.request.Request(
             "http://127.0.0.1:19826/status",
-            headers={"X-OpenCLI": "1"},
-            timeout=2
+            headers={"X-OpenCLI": "1"}
         )
-        with urllib.request.urlopen(req) as f:
+        with urllib.request.urlopen(req, timeout=2) as f:
             data = json.load(f)
             if data.get("extensionConnected"):
                 print("✅ Extension is connected!")
