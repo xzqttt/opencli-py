@@ -52,175 +52,170 @@ TOPIC_FIELD_MAIN = "ZYZT"
 
 # JavaScript to extract search results
 SEARCH_EXTRACT_JS = r"""
-(() => {
-  const normalize = (value) => String(value || '')
-    .replace(/\u00a0/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+const normalize = (value) => String(value || '')
+  .replace(/\u00a0/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
 
-  const results = [];
-  const items = document.querySelectorAll('.result-table-list tbody tr, .result-item, [class*="result"]');
+const results = [];
+const items = document.querySelectorAll('.result-table-list tbody tr, .result-item, [class*="result"]');
 
-  for (const item of Array.from(items).slice(0, 30)) {
-    try {
-      // Skip header rows
-      if (item.querySelector('th')) continue;
+for (const item of Array.from(items).slice(0, 30)) {
+  try {
+    // Skip header rows
+    if (item.querySelector('th')) continue;
 
-      const titleEl = item.querySelector('a.fc-blue, a[class*="title"], .title a, h3 a');
-      if (!titleEl) continue;
+    const titleEl = item.querySelector('a.fc-blue, a[class*="title"], .title a, h3 a');
+    if (!titleEl) continue;
 
-      const title = normalize(titleEl.textContent);
-      const url = titleEl.href;
+    const title = normalize(titleEl.textContent);
+    const url = titleEl.href;
 
-      // Authors
-      const authors = [];
-      const authorEls = item.querySelectorAll('.author a, [class*="author"] a');
-      for (const a of authorEls) {
-        authors.push(normalize(a.textContent));
-      }
-
-      // Source / Journal
-      const sourceEl = item.querySelector('.source a, [class*="source"] a, .journal a');
-      const source = sourceEl ? normalize(sourceEl.textContent) : '';
-
-      // Year
-      let year = '';
-      const yearEl = item.querySelector('.date, .year, [class*="date"], [class*="year"]');
-      if (yearEl) {
-        const yearText = normalize(yearEl.textContent);
-        const match = yearText.match(/(\d{4})/);
-        if (match) year = match[1];
-      }
-
-      // Database / Type
-      const dbEl = item.querySelector('.database, .type, [class*="database"], [class*="type"]');
-      const db = dbEl ? normalize(dbEl.textContent) : '';
-
-      // Citation count
-      let citations = '';
-      const citeEl = item.querySelector('.count, .cite, [class*="count"], [class*="cite"]');
-      if (citeEl) {
-        const citeText = normalize(citeEl.textContent);
-        const match = citeText.match(/(\d+)/);
-        if (match) citations = match[1];
-      }
-
-      results.push({
-        title,
-        url,
-        authors,
-        source,
-        year,
-        db,
-        citations,
-      });
-    } catch (e) {
-      continue;
+    // Authors
+    const authors = [];
+    const authorEls = item.querySelectorAll('.author a, [class*="author"] a');
+    for (const a of authorEls) {
+      authors.push(normalize(a.textContent));
     }
-  }
 
-  return results;
-})()
+    // Source / Journal
+    const sourceEl = item.querySelector('.source a, [class*="source"] a, .journal a');
+    const source = sourceEl ? normalize(sourceEl.textContent) : '';
+
+    // Year
+    let year = '';
+    const yearEl = item.querySelector('.date, .year, [class*="date"], [class*="year"]');
+    if (yearEl) {
+      const yearText = normalize(yearEl.textContent);
+      const match = yearText.match(/(\d{4})/);
+      if (match) year = match[1];
+    }
+
+    // Database / Type
+    const dbEl = item.querySelector('.database, .type, [class*="database"], [class*="type"]');
+    const db = dbEl ? normalize(dbEl.textContent) : '';
+
+    // Citation count
+    let citations = '';
+    const citeEl = item.querySelector('.count, .cite, [class*="count"], [class*="cite"]');
+    if (citeEl) {
+      const citeText = normalize(citeEl.textContent);
+      const match = citeText.match(/(\d+)/);
+      if (match) citations = match[1];
+    }
+
+    results.push({
+      title,
+      url,
+      authors,
+      source,
+      year,
+      db,
+      citations,
+    });
+  } catch (e) {
+    continue;
+  }
+}
+
+results;
 """
 
-# JavaScript to extract detail page
+# JavaScript to extract detail page (synchronous version)
 DETAIL_EXTRACT_JS = r"""
-(async () => {
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const normalize = (value) => String(value || '')
-    .replace(/\u00a0/g, ' ')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/\n{2,}/g, '\n\n')
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+const normalize = (value) => String(value || '')
+  .replace(/\u00a0/g, ' ')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n[ \t]+/g, '\n')
+  .replace(/\n{2,}/g, '\n\n')
+  .replace(/[ \t]{2,}/g, ' ')
+  .trim();
 
-  const normalizeLine = (value) => normalize(value).replace(/\n+/g, ' ').trim();
+const normalizeLine = (value) => normalize(value).replace(/\n+/g, ' ').trim();
 
-  const result: Record<string, any> = {
-    title: '',
-    authors: [],
-    abstract: '',
-    keywords: [],
-    year: '',
-    source: '',
-    doi: '',
-    fund: '',
-    classification: '',
-  };
+const result = {
+  title: '',
+  authors: [],
+  abstract: '',
+  keywords: [],
+  year: '',
+  source: '',
+  doi: '',
+  fund: '',
+  classification: '',
+};
 
-  // Title
-  const titleEl = document.querySelector('h1, .title, [class*="title"]');
-  if (titleEl) result.title = normalizeLine(titleEl.textContent);
+// Title
+const titleEl = document.querySelector('h1, .title, [class*="title"]');
+if (titleEl) result.title = normalizeLine(titleEl.textContent);
 
-  // Authors
-  const authorEls = document.querySelectorAll('.author a, .authors a, [class*="author"] a');
-  for (const a of authorEls) {
-    const text = normalizeLine(a.textContent);
-    if (text) result.authors.push(text);
-  }
+// Authors
+const authorEls = document.querySelectorAll('.author a, .authors a, [class*="author"] a');
+for (const a of authorEls) {
+  const text = normalizeLine(a.textContent);
+  if (text) result.authors.push(text);
+}
 
-  // Abstract
-  const abstractEl = document.querySelector('#ChDivSummary, .abstract, .summary, [class*="abstract"], [class*="summary"]');
-  if (abstractEl) result.abstract = normalize(abstractEl.textContent);
+// Abstract
+const abstractEl = document.querySelector('#ChDivSummary, .abstract, .summary, [class*="abstract"], [class*="summary"]');
+if (abstractEl) result.abstract = normalize(abstractEl.textContent);
 
-  // Keywords
-  const keywordEls = document.querySelectorAll('.keywords a, .keyword a, [class*="keyword"] a');
-  for (const a of keywordEls) {
-    const text = normalizeLine(a.textContent);
-    if (text) result.keywords.push(text);
-  }
+// Keywords
+const keywordEls = document.querySelectorAll('.keywords a, .keyword a, [class*="keyword"] a');
+for (const a of keywordEls) {
+  const text = normalizeLine(a.textContent);
+  if (text) result.keywords.push(text);
+}
 
-  // Source / Journal
-  const sourceEl = document.querySelector('.journal a, .source a, .periodical a, [class*="journal"] a, [class*="source"] a');
-  if (sourceEl) result.source = normalizeLine(sourceEl.textContent);
+// Source / Journal
+const sourceEl = document.querySelector('.journal a, .source a, .periodical a, [class*="journal"] a, [class*="source"] a');
+if (sourceEl) result.source = normalizeLine(sourceEl.textContent);
 
-  // Year
-  const yearEl = document.querySelector('.publish-date, .year, .date, [class*="date"]');
-  if (yearEl) {
-    const text = normalizeLine(yearEl.textContent);
+// Year
+const yearEl = document.querySelector('.publish-date, .year, .date, [class*="date"]');
+if (yearEl) {
+  const text = normalizeLine(yearEl.textContent);
+  const match = text.match(/(\d{4})/);
+  if (match) result.year = match[1];
+}
+
+// DOI
+const doiEl = document.querySelector('.doi, [class*="doi"]');
+if (doiEl) result.doi = normalizeLine(doiEl.textContent);
+
+// Fund
+const fundEl = document.querySelector('.fund, [class*="fund"]');
+if (fundEl) result.fund = normalizeLine(fundEl.textContent);
+
+// Classification
+const classEl = document.querySelector('.classification, .class, [class*="class"]');
+if (classEl) result.classification = normalizeLine(classEl.textContent);
+
+// Parse meta info table
+const rows = document.querySelectorAll('.row, [class*="row"], .info-item, tr');
+for (const row of rows) {
+  const text = normalizeLine(row.textContent);
+  if (!text) continue;
+
+  if (text.includes('年') && text.match(/\d{4}/) && !result.year) {
     const match = text.match(/(\d{4})/);
     if (match) result.year = match[1];
   }
-
-  // DOI
-  const doiEl = document.querySelector('.doi, [class*="doi"]');
-  if (doiEl) result.doi = normalizeLine(doiEl.textContent);
-
-  // Fund
-  const fundEl = document.querySelector('.fund, [class*="fund"]');
-  if (fundEl) result.fund = normalizeLine(fundEl.textContent);
-
-  // Classification
-  const classEl = document.querySelector('.classification, .class, [class*="class"]');
-  if (classEl) result.classification = normalizeLine(classEl.textContent);
-
-  // Parse meta info table
-  const rows = document.querySelectorAll('.row, [class*="row"], .info-item, tr');
-  for (const row of rows) {
-    const text = normalizeLine(row.textContent);
-    if (!text) continue;
-
-    if (text.includes('年') && text.match(/\d{4}/) && !result.year) {
-      const match = text.match(/(\d{4})/);
-      if (match) result.year = match[1];
-    }
-    if ((text.includes('DOI') || text.includes('doi')) && !result.doi) {
-      const parts = text.split(/[:：]/);
-      if (parts.length > 1) result.doi = normalizeLine(parts[1]);
-    }
-    if ((text.includes('期刊') || text.includes('来源')) && !result.source) {
-      const parts = text.split(/[:：]/);
-      if (parts.length > 1) result.source = normalizeLine(parts[1]);
-    }
-    if ((text.includes('基金') || text.includes('资助')) && !result.fund) {
-      const parts = text.split(/[:：]/);
-      if (parts.length > 1) result.fund = normalizeLine(parts[1]);
-    }
+  if ((text.includes('DOI') || text.includes('doi')) && !result.doi) {
+    const parts = text.split(/[:：]/);
+    if (parts.length > 1) result.doi = normalizeLine(parts[1]);
   }
+  if ((text.includes('期刊') || text.includes('来源')) && !result.source) {
+    const parts = text.split(/[:：]/);
+    if (parts.length > 1) result.source = normalizeLine(parts[1]);
+  }
+  if ((text.includes('基金') || text.includes('资助')) && !result.fund) {
+    const parts = text.split(/[:：]/);
+    if (parts.length > 1) result.fund = normalizeLine(parts[1]);
+  }
+}
 
-  return result;
-})()
+result;
 """
 
 

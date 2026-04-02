@@ -83,15 +83,13 @@ class Page:
 
     def evaluate(self, js: str) -> Any:
         """Execute JavaScript and return the result."""
-        # Wrap for eval - ensure it's an IIFE if needed
-        wrapped = f"({js})()" if js.strip().startswith(("(", "async")) else js
-
+        # Send the JavaScript as-is - Extension handles async via awaitPromise
         cmd = Command(
             id=generate_id(),
             action="exec",
             workspace=self._workspace,
             tabId=self._tab_id,
-            code=wrapped
+            code=js
         )
         result = self._client._send_command(cmd)
         if not result.ok:

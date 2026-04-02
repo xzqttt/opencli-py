@@ -26,151 +26,145 @@ SECURITY_PAGE_TITLE = "百度安全验证"
 
 # JavaScript to extract search results
 SEARCH_EXTRACT_JS = r"""
-(() => {
-  const normalize = (value) => String(value || '')
-    .replace(/\u00a0/g, ' ')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/\n{2,}/g, '\n\n')
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+const normalize = (value) => String(value || '')
+  .replace(/\u00a0/g, ' ')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n[ \t]+/g, '\n')
+  .replace(/\n{2,}/g, '\n\n')
+  .replace(/[ \t]{2,}/g, ' ')
+  .trim();
 
-  const normalizeInline = (value) => normalize(value).replace(/\n+/g, ' ').trim();
+const normalizeInline = (value) => normalize(value).replace(/\n+/g, ' ').trim();
 
-  const results = [];
-  const items = document.querySelectorAll('.sc_content, .result, [class*="result"]');
+const results = [];
+const items = document.querySelectorAll('.sc_content, .result, [class*="result"]');
 
-  for (const item of Array.from(items).slice(0, 20)) {
-    try {
-      const titleEl = item.querySelector('h3 a, .sc_title a, [class*="title"] a');
-      if (!titleEl) continue;
+for (const item of Array.from(items).slice(0, 20)) {
+  try {
+    const titleEl = item.querySelector('h3 a, .sc_title a, [class*="title"] a');
+    if (!titleEl) continue;
 
-      const title = normalizeInline(titleEl.textContent);
-      const url = titleEl.href;
+    const title = normalizeInline(titleEl.textContent);
+    const url = titleEl.href;
 
-      const authors = [];
-      const authorEls = item.querySelectorAll('.sc_authors a, [class*="author"] a');
-      for (const a of authorEls) {
-        authors.push(normalizeInline(a.textContent));
-      }
-
-      const abstractEl = item.querySelector('.c_abstract, .sc_abstract, [class*="abstract"]');
-      const abstract = abstractEl ? normalize(abstractEl.textContent) : '';
-
-      const yearEl = item.querySelector('.sc_year, [class*="year"]');
-      const year = yearEl ? normalizeInline(yearEl.textContent) : '';
-
-      const sourceEl = item.querySelector('.sc_source, [class*="source"]');
-      const source = sourceEl ? normalizeInline(sourceEl.textContent) : '';
-
-      const citeEl = item.querySelector('.sc_cite a, [class*="cite"]');
-      let citations = '';
-      if (citeEl) {
-        const citeText = normalizeInline(citeEl.textContent);
-        const match = citeText.match(/(\d+)/);
-        citations = match ? match[1] : '';
-      }
-
-      results.push({
-        title,
-        url,
-        authors,
-        abstract,
-        year,
-        source,
-        citations,
-      });
-    } catch (e) {
-      continue;
+    const authors = [];
+    const authorEls = item.querySelectorAll('.sc_authors a, [class*="author"] a');
+    for (const a of authorEls) {
+      authors.push(normalizeInline(a.textContent));
     }
-  }
 
-  return results;
-})()
+    const abstractEl = item.querySelector('.c_abstract, .sc_abstract, [class*="abstract"]');
+    const abstract = abstractEl ? normalize(abstractEl.textContent) : '';
+
+    const yearEl = item.querySelector('.sc_year, [class*="year"]');
+    const year = yearEl ? normalizeInline(yearEl.textContent) : '';
+
+    const sourceEl = item.querySelector('.sc_source, [class*="source"]');
+    const source = sourceEl ? normalizeInline(sourceEl.textContent) : '';
+
+    const citeEl = item.querySelector('.sc_cite a, [class*="cite"]');
+    let citations = '';
+    if (citeEl) {
+      const citeText = normalizeInline(citeEl.textContent);
+      const match = citeText.match(/(\d+)/);
+      citations = match ? match[1] : '';
+    }
+
+    results.push({
+      title,
+      url,
+      authors,
+      abstract,
+      year,
+      source,
+      citations,
+    });
+  } catch (e) {
+    continue;
+  }
+}
+
+results;
 """
 
-# JavaScript to extract detail page
+# JavaScript to extract detail page (synchronous version)
 DETAIL_EXTRACT_JS = r"""
-(async () => {
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const normalize = (value) => String(value || '')
-    .replace(/\u00a0/g, ' ')
-    .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n[ \t]+/g, '\n')
-    .replace(/\n{2,}/g, '\n\n')
-    .replace(/[ \t]{2,}/g, ' ')
-    .trim();
+const normalize = (value) => String(value || '')
+  .replace(/\u00a0/g, ' ')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n[ \t]+/g, '\n')
+  .replace(/\n{2,}/g, '\n\n')
+  .replace(/[ \t]{2,}/g, ' ')
+  .trim();
 
-  const normalizeLine = (value) => normalize(value).replace(/\n+/g, ' ').trim();
+const normalizeLine = (value) => normalize(value).replace(/\n+/g, ' ').trim();
 
-  // Try to click "展开" for abstract
-  const tryExpand = () => {
-    const candidates = Array.from(
-      document.querySelectorAll('#dtl_l a, #dtl_l button, #dtl_l span, #dtl_l div, a, button')
-    );
-    for (const el of candidates) {
-      const text = normalizeLine(el.textContent);
-      if (text.includes('展开') || text.includes('更多')) {
-        try { el.click(); } catch {}
-        return true;
-      }
-    }
-    return false;
-  };
-
-  tryExpand();
-  await sleep(300);
-
-  const result: Record<string, any> = {
-    title: '',
-    authors: [],
-    abstract: '',
-    keywords: [],
-    year: '',
-    doi: '',
-    source: '',
-  };
-
-  // Title
-  const titleEl = document.querySelector('.dtl_main-title, h1, [class*="title"]');
-  if (titleEl) result.title = normalizeLine(titleEl.textContent);
-
-  // Authors
-  const authorEls = document.querySelectorAll('.dtl_author a, .author a, [class*="author"] a');
-  for (const a of authorEls) {
-    result.authors.push(normalizeLine(a.textContent));
-  }
-
-  // Abstract
-  const abstractEl = document.querySelector('#dtl_abstract, .abstract, [class*="abstract"]');
-  if (abstractEl) result.abstract = normalize(abstractEl.textContent);
-
-  // Keywords
-  const keywordEls = document.querySelectorAll('.dtl_keywords a, .keyword a, [class*="keyword"] a');
-  for (const a of keywordEls) {
-    result.keywords.push(normalizeLine(a.textContent));
-  }
-
-  // Year, source, DOI from metadata
-  const metaEls = document.querySelectorAll('.dtl_content-row, .dtl-row, [class*="row"]');
-  for (const row of metaEls) {
-    const text = normalizeLine(row.textContent);
-    if (text.includes('年份') || text.includes('年')) {
-      const match = text.match(/(\d{4})/);
-      if (match) result.year = match[1];
-    }
-    if (text.includes('DOI') || text.includes('doi')) {
-      const parts = text.split(/[:：]/);
-      if (parts.length > 1) result.doi = normalizeLine(parts[1]);
-    }
-    if (text.includes('来源') || text.includes('期刊') || text.includes('会议')) {
-      const parts = text.split(/[:：]/);
-      if (parts.length > 1) result.source = normalizeLine(parts[1]);
+// Try to click "展开" for abstract
+const tryExpand = () => {
+  const candidates = Array.from(
+    document.querySelectorAll('#dtl_l a, #dtl_l button, #dtl_l span, #dtl_l div, a, button')
+  );
+  for (const el of candidates) {
+    const text = normalizeLine(el.textContent);
+    if (text.includes('展开') || text.includes('更多')) {
+      try { el.click(); } catch {}
+      return true;
     }
   }
+  return false;
+};
 
-  return result;
-})()
+tryExpand();
+
+const result = {
+  title: '',
+  authors: [],
+  abstract: '',
+  keywords: [],
+  year: '',
+  doi: '',
+  source: '',
+};
+
+// Title
+const titleEl = document.querySelector('.dtl_main-title, h1, [class*="title"]');
+if (titleEl) result.title = normalizeLine(titleEl.textContent);
+
+// Authors
+const authorEls = document.querySelectorAll('.dtl_author a, .author a, [class*="author"] a');
+for (const a of authorEls) {
+  result.authors.push(normalizeLine(a.textContent));
+}
+
+// Abstract
+const abstractEl = document.querySelector('#dtl_abstract, .abstract, [class*="abstract"]');
+if (abstractEl) result.abstract = normalize(abstractEl.textContent);
+
+// Keywords
+const keywordEls = document.querySelectorAll('.dtl_keywords a, .keyword a, [class*="keyword"] a');
+for (const a of keywordEls) {
+  result.keywords.push(normalizeLine(a.textContent));
+}
+
+// Year, source, DOI from metadata
+const metaEls = document.querySelectorAll('.dtl_content-row, .dtl-row, [class*="row"]');
+for (const row of metaEls) {
+  const text = normalizeLine(row.textContent);
+  if (text.includes('年份') || text.includes('年')) {
+    const match = text.match(/(\d{4})/);
+    if (match) result.year = match[1];
+  }
+  if (text.includes('DOI') || text.includes('doi')) {
+    const parts = text.split(/[:：]/);
+    if (parts.length > 1) result.doi = normalizeLine(parts[1]);
+  }
+  if (text.includes('来源') || text.includes('期刊') || text.includes('会议')) {
+    const parts = text.split(/[:：]/);
+    if (parts.length > 1) result.source = normalizeLine(parts[1]);
+  }
+}
+
+result;
 """
 
 
