@@ -174,7 +174,7 @@ DETAIL_EXTRACT_JS = r"""
 """
 
 
-def console(msg: str, end: str = "\n"):
+def console(msg: str = "", end: str = "\n"):
     """Print to console."""
     print(msg, end=end)
 
